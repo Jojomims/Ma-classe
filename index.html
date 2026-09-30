@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ma Classe</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6fb;color:#172033}
+header{background:#3157d5;color:white;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:25px}.wrap{display:flex;min-height:calc(100vh - 68px)}
+nav{width:230px;background:#fff;padding:18px;box-shadow:2px 0 8px #0001}
+nav button{display:block;width:100%;padding:12px;margin:6px 0;border:0;background:#eef1fb;border-radius:9px;text-align:left;cursor:pointer}
+nav button.active{background:#3157d5;color:#fff}.main{padding:25px;flex:1}.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #0000000d}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}.stat{font-size:28px;font-weight:bold}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ccd2e0;border-radius:8px;margin:6px 0 12px}
+button.primary{background:#3157d5;color:#fff;border:0;padding:10px 15px;border-radius:8px;cursor:pointer}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+.msg{padding:10px;border-radius:10px;background:#eef1fb;margin:8px 0}.hidden{display:none}
+.login{max-width:420px;margin:70px auto}.small{color:#697386;font-size:13px}
+</style>
+</head>
+<body>
+<div id="login" class="login card">
+<h1>📚 Ma Classe</h1><p>Connexion à ton espace de classe</p>
+<label>Code de connexion</label><input id="loginCode" placeholder="Ex. PROF-001">
+<button class="primary" onclick="login()">Se connecter</button>
+<p class="small">Démo : PROF-001 (enseignant), PAR-001 (parent), ELE-001 (élève).</p>
+</div>
+
+<div id="app" class="hidden">
+<header><h1>📚 Ma Classe</h1><span id="role"></span></header>
+<div class="wrap"><nav id="nav"></nav><main class="main" id="content"></main></div>
+</div>
+
+<script>
+const data={
+users:{
+"PROF-001":{role:"enseignant",name:"Enseignant"},
+"PAR-001":{role:"parent",name:"Parent de Léa",student:"Léa"},
+"PAR-002":{role:"parent",name:"Parent de Tom",student:"Tom"},
+"ELE-001":{role:"eleve",name:"Léa",student:"Léa"},
+"ELE-002":{role:"eleve",name:"Tom",student:"Tom"}
+},
+students:["Léa","Tom","Emma","Lucas"],
+attendance:{},
+homework:[{title:"Mathématiques",date:"2026-10-02",text:"Exercices 1 à 5 page 42"}],
+infos:["Bienvenue dans le carnet de classe !"],
+messages:[
+{from:"Enseignant",to:"Léa",text:"Bonjour Léa, n'oublie pas ton cahier de maths."}
+]
+};
+let current=null;
+
+function login(){
+ const code=document.getElementById("loginCode").value.trim().toUpperCase();
+ if(!data.users[code]) return alert("Code inconnu.");
+ current=data.users[code]; document.getElementById("login").classList.add("hidden");
+ document.getElementById("app").classList.remove("hidden");
+ document.getElementById("role").textContent=current.name+" — "+current.role;
+ buildNav(); show("accueil");
+}
+function buildNav(){
+ let items=["accueil","devoirs","carnet","messages"];
+ if(current.role==="enseignant") items.splice(1,0,"eleves","appel","codes");
+ const labels={accueil:"🏠 Accueil",eleves:"👥 Élèves",appel:"📝 Faire l'appel",devoirs:"📚 Devoirs",carnet:"📢 Carnet",messages:"💬 Messagerie",codes:"🔑 Codes"};
+ document.getElementById("nav").innerHTML=items.map(x=>`<button onclick="show('${x}')" id="n-${x}">${labels[x]}</button>`).join("")+
+ `<button onclick="location.reload()">🚪 Déconnexion</button>`;
+}
+function show(page){
+ document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+ document.getElementById("n-"+page)?.classList.add("active");
+ const c=document.getElementById("content");
+ if(page==="accueil") c.innerHTML=`<h2>Bonjour ${current.name} 👋</h2><div class="grid">
+ <div class="card"><div class="stat">${data.students.length}</div>Élèves</div>
+ <div class="card"><div class="stat">${data.homework.length}</div>Devoirs</div>
+ <div class="card"><div class="stat">${data.messages.length}</div>Messages</div></div>`;
+ if(page==="eleves") eleves(c); if(page==="appel") appel(c); if(page==="devoirs") devoirs(c);
+ if(page==="carnet") carnet(c); if(page==="messages") messages(c); if(page==="codes") codes(c);
+}
+function eleves(c){c.innerHTML=`<h2>👥 Élèves</h2><div class="card"><table><tr><th>Élève</th><th>Statut</th></tr>${data.students.map(s=>`<tr><td>${s}</td><td>${data.attendance[s]||"Non renseigné"}</td></tr>`).join("")}</table></div>`}
+function appel(c){
+ c.innerHTML=`<h2>📝 Faire l'appel</h2><div class="card"><p>Choisis le statut de chaque élève.</p>${data.students.map(s=>`<label><b>${s}</b></label><select onchange="setAtt('${s}',this.value)">
+<option value="">Choisir…</option><option>Présent</option><option>Absent</option><option>Retard — 10 min</option><option>Retard — 15 min</option><option>Retard — 20 min</option><option>Retard — 30 min</option><option>Retard — 1 heure</option></select>`).join("")}<br><button class="primary" onclick="alert('Appel enregistré !')">Enregistrer l'appel</button></div>`;
+}
+function setAtt(s,v){data.attendance[s]=v}
+function devoirs(c){
+ let canEdit=current.role==="enseignant";
+ c.innerHTML=`<h2>📚 Devoirs</h2>${canEdit?`<div class="card"><h3>Ajouter un devoir</h3><input id="dh" placeholder="Matière / titre"><input id="dd" type="date"><textarea id="dt" placeholder="Consigne"></textarea><button class="primary" onclick="addHomework()">Ajouter</button></div>`:""}<div class="card">${data.homework.map(h=>`<div class="msg"><b>${h.title}</b> — ${h.date}<br>${h.text}</div>`).join("")}</div>`;
+}
+function addHomework(){data.homework.unshift({title:dh.value,date:dd.value,text:dt.value});show("devoirs")}
+function carnet(c){
+ c.innerHTML=`<h2>📢 Carnet d'informations</h2>${current.role==="enseignant"?`<div class="card"><input id="info" placeholder="Nouvelle information"><button class="primary" onclick="addInfo()">Publier</button></div>`:""}<div class="card">${data.infos.map(x=>`<div class="msg">${x}</div>`).join("")}</div>`;
+}
+function addInfo(){data.infos.unshift(info.value);show("carnet")}
+function messages(c){
+ let target=current.role==="enseignant"?`<select id="dest">${data.students.map(s=>`<option>${s}</option>`).join("")}</select>`:"";
+ let visible=data.messages.filter(m=>current.role==="enseignant"||m.to===current.name||m.from===current.name||m.to===current.student);
+ c.innerHTML=`<h2>💬 Messagerie</h2><p class="small">La messagerie permet uniquement les échanges avec l'enseignant. Parents et élèves ne peuvent pas s'écrire entre eux.</p>
+ <div class="card">${target}<textarea id="mt" placeholder="Écrire un message…"></textarea><button class="primary" onclick="sendMsg()">Envoyer</button></div>
+ <div class="card">${visible.map(m=>`<div class="msg"><b>${m.from} → ${m.to}</b><br>${m.text}</div>`).join("")}</div>`;
+}
+function sendMsg(){
+ let to=current.role==="enseignant"?dest.value:current.name==="Léa"?"Enseignant":"Enseignant";
+ let textv=mt.value.trim(); if(!textv)return;
+ data.messages.push({from:current.role==="enseignant"?"Enseignant":current.name,to,text:textv}); show("messages");
+}
+function codes(c){
+ c.innerHTML=`<h2>🔑 Codes des utilisateurs</h2><div class="card"><table><tr><th>Nom</th><th>Type</th><th>Code</th></tr>${Object.entries(data.users).map(([code,u])=>`<tr><td>${u.name}</td><td>${u.role}</td><td><b>${code}</b></td></tr>`).join("")}</table></div>`;
+}
+</script>
+</body></html>
